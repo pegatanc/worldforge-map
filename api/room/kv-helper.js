@@ -1,23 +1,6 @@
-// Minimal KV helper. Lazily imports @vercel/kv only when KV is bound.
-// No top-level await (incompatible with some Vercel build output formats).
-let kvPromise = null;
-function getKv() {
-  if (kvPromise) return kvPromise;
-  kvPromise = (async () => {
-    if (!process.env.KV_REST_API_URL) return null;
-    try { const mod = await import("@vercel/kv"); return mod.kv || null; }
-    catch (_) { return null; }
-  })();
-  return kvPromise;
-}
-
-export async function kvGet(k) {
-  const kv = await getKv();
-  if (!kv) return null;
-  try { return await kv.get(k); } catch (_) { return null; }
-}
-export async function kvSet(k, v) {
-  const kv = await getKv();
-  if (!kv) return;
-  try { await kv.set(k, v); } catch (_) {}
-}
+// KV helper — currently a no-op so the function has zero external deps and
+// runs on both Edge and Node runtimes. Rooms persist in-memory per instance
+// (see store.js MEM map). To enable durable KV, bind Vercel KV / Upstash Redis
+// and replace these with real client calls.
+export async function kvGet() { return null; }
+export async function kvSet() {}

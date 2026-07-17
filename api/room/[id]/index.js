@@ -6,7 +6,7 @@ import {
   genId, genToken, applyPatch, rateLimit, payloadOk, serialize,
 } from "../store.js";
 
-export const config = { runtime: "nodejs" };
+export const config = { runtime: "edge" };
 
 export async function GET(req, ctx) {
   const id = ctx.params.id;

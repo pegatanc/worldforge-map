@@ -1,11 +1,9 @@
 // Shared room store + security for Worldforge collab
 // Uses Vercel KV if bound (process.env.KV_REST_API_URL + token), else in-memory.
 import { kvGet, kvSet } from "./kv-helper.js";
-import { webcrypto } from "node:crypto";
 
-// Ensure a Web Crypto implementation is always available (Vercel Node runtime
-// may not expose global `crypto` depending on version).
-const crypto = globalThis.crypto || webcrypto;
+// `crypto` (Web Crypto) is a global in Vercel Edge, Node >=19, and modern browsers.
+const crypto = globalThis.crypto;
 
 const MEM = new Map(); // in-memory fallback (dev / no KV binding)
 const KEYMAP = {};     // roomId -> secret write token
