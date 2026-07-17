@@ -2,11 +2,7 @@
 // Uses Vercel KV if bound (process.env.KV_REST_API_URL + token), else in-memory.
 import { kvGet, kvSet } from "./kv-helper.js";
 
-// Node <19 lacks global crypto; Web Crypto is available via node:crypto on all modern runtimes.
-if (typeof globalThis.crypto === "undefined") {
-  const { webcrypto } = await import("node:crypto");
-  globalThis.crypto = webcrypto;
-}
+// `crypto` is a global in Vercel Edge runtime and in Node >=19. No polyfill needed.
 
 const MEM = new Map(); // in-memory fallback (dev / no KV binding)
 const KEYMAP = {};     // roomId -> secret write token
