@@ -8,8 +8,16 @@ import {
 
 export const config = { runtime: "edge" };
 
-export async function GET(req, ctx) {
-  const id = ctx.params.id;
+// In the Vercel Edge runtime, handlers receive (request) only.
+// The room id is the last path segment of /api/room/<id>.
+function roomIdFromReq(req) {
+  const url = new URL(req.url);
+  const parts = url.pathname.split("/").filter(Boolean);
+  return parts[parts.length - 1] || "x";
+}
+
+export async function GET(req) {
+  const id = roomIdFromReq(req);
   const room = await loadRoom(id);
   if (!room) {
     return new Response(JSON.stringify({ error: "room not found" }), { status: 404 });
@@ -19,8 +27,8 @@ export async function GET(req, ctx) {
   });
 }
 
-export async function POST(req, ctx) {
-  const id = ctx.params.id;
+export async function POST(req) {
+  const id = roomIdFromReq(req);
   const ip = req.headers.get("x-forwarded-for") || "local";
   if (!rateLimit(ip)) {
     return new Response(JSON.stringify({ error: "rate limited" }), { status: 429 });
