@@ -1,0 +1,14 @@
+{
+  "name": "worldforge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.0",
+    "jsdom": "^29.1.1"
+  }
+}

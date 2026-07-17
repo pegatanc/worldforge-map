@@ -66,6 +66,7 @@
     border:1px solid var(--accent);padding:9px 16px;border-radius:8px;font-size:13px;
     opacity:0;transition:.25s;z-index:50;pointer-events:none}
   .toast.show{opacity:1}
+  .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 6px rgba(0,0,0,.5)}
   ::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#243150;border-radius:5px}
   .exportrow{display:flex;gap:8px;flex-wrap:wrap}
   .hl{color:var(--accent2)}
@@ -77,6 +78,7 @@
     <h1>WORLDFORGE</h1>
     <span class="sub">interactive lore cartographer</span>
     <div class="spacer"></div>
+    <button class="btn" id="btnCollab" style="border-color:#3fd6a0;color:#3fd6a0">Collaborate</button>
     <button class="btn" id="btnExport">Export JSON</button>
     <button class="btn" id="btnImport">Import JSON</button>
     <button class="btn" id="btnReset" style="border-color:#5a2a3a;color:#ff8aa0">Reset</button>
@@ -108,8 +110,27 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Collaboration modal -->
+<div id="collabModal" style="display:none;position:fixed;inset:0;background:rgba(5,8,15,.8);z-index:100;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;width:min(440px,92vw)">
+    <h3 style="margin:0 0 6px;color:var(--accent);letter-spacing:1px">COLLABORATE</h3>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 14px">Share this link — anyone with it can edit the world live. The key in the URL is required to write; without it others are read-only.</p>
+    <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Share link (includes secret write key)</label>
+    <input type="text" id="collabUrl" readonly style="margin-top:4px;font-size:11px;color:var(--good)">
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="btn accent" id="collabCopy">Copy link</button>
+      <button class="btn" id="collabClose">Close</button>
+    </div>
+    <div style="margin-top:14px">
+      <label style="font-size:11px;color:var(--muted)">Online now</label>
+      <div id="presence" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+  </div>
+</div>
+
 <script src="d3.min.js"></script>
 <script src="topojson-client.min.js"></script>
+<script src="collab.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

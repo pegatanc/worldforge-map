@@ -24,6 +24,9 @@
   let gMap, gBonds, gCountries, gLabels;
   let projection, path, zoom, currentTransform = d3.zoomIdentity;
 
+  // ---- collaboration (optional) ----
+  let collab = null; // Worldforge.Collab instance when in a room
+
   // ---- persistence ----
   function save() {
     try {
@@ -41,6 +44,13 @@
       state.countries = d.countries || {};
       state.realms = d.realms || {};
     } catch (e) { console.warn("load failed", e); }
+  }
+
+  // broadcast a single field change to the collab room (if active)
+  function broadcast(field, id, value) {
+    if (collab && collab.room && collab.key) {
+      collab.patch(id, field, value).catch(() => {});
+    }
   }
 
   // ---- toast ----
@@ -209,11 +219,13 @@
     // wire lore
     document.getElementById("lore").addEventListener("input", (e) => {
       state.countries[id].lore = e.target.value; save();
+      broadcast("lore", id, e.target.value);
     });
     // name (editable, cosmetic — ISO id stays the key)
     document.getElementById("cname").addEventListener("input", (e) => {
       const nm = e.target.value;
       state.countries[id].name = nm; save();
+      broadcast("name", id, nm);
       // refresh hover tooltip on the map
       gCountries.selectAll("path.country").filter((d) => d.id === id)
         .select("title").text(nm || nameOf(id));
@@ -222,15 +234,18 @@
     // color
     document.getElementById("color").addEventListener("input", (e) => {
       state.countries[id].color = e.target.value; save(); render();
+      broadcast("color", id, e.target.value);
     });
     document.getElementById("clrColor").addEventListener("click", () => {
       delete state.countries[id].color; save(); render();
       document.getElementById("color").value = toHex(countryFill({id}));
+      broadcast("color", id, undefined);
     });
     // flag url
     document.getElementById("flagurl").addEventListener("input", (e) => {
       const v = e.target.value.trim();
       state.countries[id].flag = v || undefined; save();
+      broadcast("flag", id, v || undefined);
       document.getElementById("flagPrev").innerHTML = v ? `<img src="${escapeHtml(v)}" alt="flag">` : `<span class="stat">no flag</span>`;
     });
     // flag file -> dataURL
@@ -239,6 +254,7 @@
       const r = new FileReader();
       r.onload = () => {
         state.countries[id].flag = r.result; save();
+        broadcast("flag", id, r.result);
         document.getElementById("flagPrev").innerHTML = `<img src="${r.result}" alt="flag">`;
         toast("Flag uploaded");
       };
@@ -253,6 +269,7 @@
       state.realms[rid] = { name: nm, color: randColor(), members: [...state.pendingRealm], lore: "" };
       state.pendingRealm = [];
       save(); render(); openPanel(id); toast("Realm bound: " + nm);
+      broadcast("realms", "__realms__", state.realms);
     });
     // existing realms list
     renderRealmList(id);
@@ -415,6 +432,83 @@
       if (e.target.files[0]) importJSON(e.target.files[0]);
       e.target.value = "";
     });
+
+    // ---- collaboration ----
+    function mergeRemote(data) {
+      if (!data || !data.countries) return;
+      // merge country fields (remote wins only if newer; we trust server rev ordering)
+      for (const cid in data.countries) {
+        const rc = data.countries[cid];
+        const lc = state.countries[cid] || (state.countries[cid] = {});
+        for (const f of ["name", "lore", "color", "flag"]) {
+          if (rc[f] !== undefined) lc[f] = rc[f];
+        }
+      }
+      if (data.realms) {
+        for (const rid in data.realms) {
+          state.realms[rid] = state.realms[rid] || data.realms[rid];
+          // merge members if remote has more
+          if ((data.realms[rid].members || []).length > (state.realms[rid].members || []).length)
+            state.realms[rid].members = data.realms[rid].members;
+        }
+      }
+      save(); render();
+      if (state.selected) {
+        const sel = state.selected;
+        // refresh panel name/color if open
+        const nmEl = document.getElementById("cname");
+        if (nmEl && state.countries[sel]) nmEl.value = state.countries[sel].name || "";
+      }
+    }
+
+    function setupCollab() {
+      collab = window.Worldforge && window.Worldforge.Collab ? new window.Worldforge.Collab({
+        onSync: (data) => mergeRemote(data),
+        onMembers: (members) => {
+          const box = document.getElementById("presence");
+          if (!box) return;
+          box.innerHTML = members.map((m) =>
+            `<span class="dot" title="${escapeHtml(m.name)}" style="background:${escapeHtml(m.color)}"></span>`).join("");
+        },
+        onError: (msg) => { /* silent in UI for now */ console.warn("collab:", msg); },
+      }) : null;
+      if (!collab) { console.warn("Collab module not loaded"); return; }
+
+      const urlRoom = window.Worldforge.Collab.fromURL();
+      if (urlRoom.room) {
+        collab.room = urlRoom.room; collab.key = urlRoom.key;
+        collab.name = localStorage.getItem("wf_name") || "anon";
+        collab._start();
+        toast("Joined room " + urlRoom.room);
+      }
+    }
+
+    // Collaborate button -> open modal
+    document.getElementById("btnCollab").addEventListener("click", async () => {
+      if (!collab) setupCollab();
+      const existing = collab && collab.room;
+      const url = existing ? collab.shareURL() : await collab.create();
+      if (url) {
+        collab.name = prompt("Your display name?", localStorage.getItem("wf_name") || "anon") || "anon";
+        localStorage.setItem("wf_name", collab.name);
+        collab._start();
+        // copy to clipboard
+        try { await navigator.clipboard.writeText(url); toast("Share link copied to clipboard!"); }
+        catch (_) { toast("Share link: " + url); }
+        document.getElementById("collabUrl").value = url;
+        document.getElementById("collabModal").style.display = "flex";
+      }
+    });
+    document.getElementById("collabClose").addEventListener("click", () => {
+      document.getElementById("collabModal").style.display = "none";
+    });
+    document.getElementById("collabCopy").addEventListener("click", async () => {
+      const url = document.getElementById("collabUrl").value;
+      try { await navigator.clipboard.writeText(url); toast("Copied!"); }
+      catch (_) { toast("Copy failed — select manually"); }
+    });
+
+    setupCollab();
 
     window.addEventListener("resize", () => {
       const w = document.getElementById("mapwrap").clientWidth;
