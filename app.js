@@ -149,7 +149,8 @@
 
     panel.innerHTML = `
       <div class="card">
-        <h3>${escapeHtml(c.name)}</h3>
+        <label>Country name</label>
+        <input type="text" id="cname" value="${escapeHtml(c.name)}" style="font-size:15px;font-weight:600;margin-bottom:8px">
         <div class="stat">Realm: <b>${rid ? escapeHtml(state.realms[rid].name) : "— (none)"}</b></div>
         <div class="stat" style="margin-top:4px">ISO id: <b>${escapeHtml(String(id))}</b></div>
         <div class="stat" style="margin-top:4px">Neighbors: <b>${adjacency[id] ? adjacency[id].size : 0}</b></div>
@@ -208,6 +209,15 @@
     // wire lore
     document.getElementById("lore").addEventListener("input", (e) => {
       state.countries[id].lore = e.target.value; save();
+    });
+    // name (editable, cosmetic — ISO id stays the key)
+    document.getElementById("cname").addEventListener("input", (e) => {
+      const nm = e.target.value;
+      state.countries[id].name = nm; save();
+      // refresh hover tooltip on the map
+      gCountries.selectAll("path.country").filter((d) => d.id === id)
+        .select("title").text(nm || nameOf(id));
+      renderRealmList(id);
     });
     // color
     document.getElementById("color").addEventListener("input", (e) => {
