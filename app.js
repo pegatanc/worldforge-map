@@ -486,17 +486,27 @@
     // Collaborate button -> open modal
     document.getElementById("btnCollab").addEventListener("click", async () => {
       if (!collab) setupCollab();
-      const existing = collab && collab.room;
-      const url = existing ? collab.shareURL() : await collab.create();
-      if (url) {
-        collab.name = prompt("Your display name?", localStorage.getItem("wf_name") || "anon") || "anon";
-        localStorage.setItem("wf_name", collab.name);
-        collab._start();
-        // copy to clipboard
-        try { await navigator.clipboard.writeText(url); toast("Share link copied to clipboard!"); }
-        catch (_) { toast("Share link: " + url); }
-        document.getElementById("collabUrl").value = url;
-        document.getElementById("collabModal").style.display = "flex";
+      if (!collab) { toast("Collaboration module failed to load"); return; }
+      try {
+        const existing = collab.room;
+        const url = existing ? collab.shareURL() : await collab.create();
+        if (url) {
+          collab.name = prompt("Your display name?", localStorage.getItem("wf_name") || "anon") || "anon";
+          localStorage.setItem("wf_name", collab.name);
+          collab._start();
+          try { await navigator.clipboard.writeText(url); toast("Share link copied to clipboard!"); }
+          catch (_) { toast("Share link: " + url); }
+          document.getElementById("collabUrl").value = url;
+          document.getElementById("collabModal").style.display = "flex";
+        }
+      } catch (e) {
+        // Most common cause: app is served from a static host (GitHub Pages / file://)
+        // with no /api/room backend. Surface a clear, actionable message.
+        console.warn("collab create failed:", e.message);
+        const isLocal = location.protocol === "file:" || !location.hostname.endsWith("vercel.app");
+        toast(isLocal
+          ? "Collaboration needs the Vercel deploy (see README). Running single-player."
+          : "Could not reach collaboration server: " + e.message);
       }
     });
     document.getElementById("collabClose").addEventListener("click", () => {
